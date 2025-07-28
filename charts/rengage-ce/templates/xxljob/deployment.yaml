@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ printf "%s-xxljob" (include "rengage-ce.fullname" .) }}
+  labels:
+    app.kubernetes.io/name: {{ printf "%s-xxljob" (include "rengage-ce.name" .) }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- include "rengage-ce.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.xxljob.autoscaling.enabled }}
+  replicas: {{ .Values.xxljob.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ printf "%s-xxljob" (include "rengage-ce.name" .) }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      {{- with .Values.xxljob.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app.kubernetes.io/name: {{ printf "%s-xxljob" (include "rengage-ce.name" .) }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "rengage-ce.labels" . | nindent 8 }}
+        {{- with .Values.xxljob.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.xxljob.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "rengage-ce.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.xxljob.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: mysql-init
+          image: mysql:8.0
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              if [ ! -f /init-data/init.done ]; then
+                echo "Running MySQL init script from /sql/init.sql..."
+                mysql -h {{ .Values.global.mysql.host }} -P {{ .Values.global.mysql.port }} -u {{ .Values.global.mysql.username }} -p{{ .Values.global.mysql.password }} {{- if eq (toString .Values.global.mysql.ssl) "true" }} --ssl-mode=REQUIRED {{- end }} {{ .Values.global.mysql.database }} < /sql/init.sql
+                touch /init-data/init.done
+              else
+                echo "MySQL already initialized. Skipping."
+              fi
+          volumeMounts:
+            - name: init-data
+              mountPath: /init-data
+            - name: init-sql
+              mountPath: /sql
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.xxljob.securityContext | nindent 12 }}
+          image: "{{ .Values.xxljob.image.repository }}:{{ .Values.xxljob.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.xxljob.image.pullPolicy }}
+          env:
+            - name: PARAMS
+              value: >-
+                --spring.datasource.url=jdbc:mysql://{{ .Values.global.mysql.host }}:{{ .Values.global.mysql.port }}/xxl_job?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&ssl={{ .Values.global.mysql.ssl }}
+                --spring.datasource.username={{ .Values.global.mysql.username }}
+                --spring.datasource.password={{ .Values.global.mysql.password }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.xxljob.service.port }}
+              protocol: TCP
+          {{- with .Values.xxljob.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.xxljob.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- with .Values.xxljob.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.xxljob.readinessProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.xxljob.resources | nindent 12 }}
+      {{- with .Values.xxljob.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

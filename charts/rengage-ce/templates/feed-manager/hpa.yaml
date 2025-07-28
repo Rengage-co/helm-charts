@@ -1,0 +1,34 @@
+{{- if .Values.feedmanager.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ printf "%s-feedmanager" (include "rengage-ce.fullname" .) }}
+  labels:
+    app.kubernetes.io/name: {{ printf "%s-feedmanager" (include "rengage-ce.name" .) }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- include "rengage-ce.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ printf "%s-feedmanager" (include "rengage-ce.fullname" .) }}
+  minReplicas: {{ .Values.feedmanager.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.feedmanager.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.feedmanager.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.feedmanager.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.feedmanager.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.feedmanager.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ printf "%s-conductorconsumer" (include "rengage-ce.fullname" .) }}
+  labels:
+    app.kubernetes.io/name: {{ printf "%s-conductorconsumer" (include "rengage-ce.name" .) }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- include "rengage-ce.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.conductorconsumer.autoscaling.enabled }}
+  replicas: {{ .Values.conductorconsumer.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ printf "%s-conductorconsumer" (include "rengage-ce.name" .) }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      {{- with .Values.conductorconsumer.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app.kubernetes.io/name: {{ printf "%s-conductorconsumer" (include "rengage-ce.name" .) }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "rengage-ce.labels" . | nindent 8 }}
+        {{- with .Values.conductorconsumer.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.conductorconsumer.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "rengage-ce.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.conductorconsumer.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.conductorconsumer.securityContext | nindent 12 }}
+          image: "{{ .Values.conductorconsumer.image.repository }}:{{ .Values.conductorconsumer.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.conductorconsumer.image.pullPolicy }}
+          env:
+            {{- toYaml .Values.conductorconsumer.env | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.conductorconsumer.service.port }}
+              protocol: TCP
+          {{- with .Values.conductorconsumer.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.conductorconsumer.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- with .Values.conductorconsumer.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.conductorconsumer.readinessProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.conductorconsumer.resources | nindent 12 }}
+          {{- with .Values.conductorconsumer.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.conductorconsumer.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

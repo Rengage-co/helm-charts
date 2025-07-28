@@ -1,0 +1,136 @@
+# Default values for rengage-ce-dependency.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# kube-prometheus-stack:
+#   enabled: true
+#   grafana:
+#     adminUser: admin
+#     adminPassword: password
+
+redis:
+  enabled: true
+  fullnameOverride: redis
+  architecture: standalone
+  auth:
+    enabled: false
+    password: password
+  master:
+    resourcesPreset: "small"
+  replica:
+    replicaCount: 1
+    resourcesPreset: "small"
+
+elasticsearch:
+  enabled: true
+  replicas: 1
+  secret:
+    password: password
+  volumeClaimTemplate:
+    resources:
+      requests:
+        storage: 100Gi
+
+minio:
+  enabled: true
+  fullnameOverride: minio
+  auth:
+    rootUser: admin
+    rootPassword: password
+  persistence:
+    size: 100Gi
+
+clickhouse:
+  enabled: true
+  fullnameOverride: clickhouse
+  auth:
+    username: default
+    password: password
+  shards: 1
+  replicaCount: 1
+  persistence:
+    size: 100Gi
+  keeper:
+    replicaCount: 1
+    persistence:
+      size: 30Gi
+
+kafka:
+  enabled: true
+  fullnameOverride: kafka
+  broker:
+    resourcesPreset: "xlarge"
+    persistence:
+      size: 100Gi
+  controller:
+    replicaCount: 1
+    resourcesPreset: "2xlarge"
+    persistence:
+      size: 30Gi
+  sasl:
+    client:
+      passwords:
+        - password
+      users:
+        - user1
+
+mysql:
+  enabled: true
+  fullnameOverride: mysql
+  auth:
+    rootPassword: password
+    username: mysql
+    password: password
+    replicationUser: mysql
+    replicationPassword: password
+    createDatabase: true
+    database: presentationlayer
+  primary:
+    persistence:
+      size: 100Gi
+    resourcesPreset: "large"
+  secondary:
+    replicaCount: 1
+    persistence:
+      size: 100Gi
+    resourcesPreset: "large"
+  initdbScripts:
+    rengage_init_script.sh: |
+      #!/bin/bash
+      if [[ $(hostname) == *-0 ]]; then
+        echo "Primary node"
+        password_aux="${MYSQL_ROOT_PASSWORD:-}"
+        if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
+            password_aux=$(cat "$MYSQL_ROOT_PASSWORD_FILE")
+        fi
+        echo "Creating database and granting privileges..."
+        mysql -P 3306 -uroot -p"$password_aux" -e "
+          CREATE DATABASE IF NOT EXISTS blocfree_rengage;
+          GRANT ALL PRIVILEGES ON *.* TO 'mysql'@'%' WITH GRANT OPTION;
+          FLUSH PRIVILEGES;"
+        echo "Database created and privileges granted to user 'mysql'"
+      else
+        echo "Secondary node - skipping DB init"
+      fi

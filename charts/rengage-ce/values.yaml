@@ -1,0 +1,1915 @@
+# Default values for rengage-ce.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: "rengage"
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+global:
+  redis:
+    host: ''
+    port: ''
+    username: ''
+    password: ''
+    ssl: ''
+  clickhouse:
+    host: ''
+    port: ''
+    username: ''
+    password: ''
+    ssl: ''
+  mysql:
+    host: 'mysql'
+    port: '3306'
+    username: 'mysql'
+    password: 'password'
+    ssl: false
+    database: 'presentationlayer'
+  kafka:
+  minio:
+
+nginx:
+  # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+  replicaCount: 1
+
+  # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+  image:
+    repository: nginx
+    # This sets the pull policy for images.
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "1.16.0"
+  env: []
+    # - name: ENV1
+    #   value: "Value1"
+    # - name: ENV2
+  #   value: "value2"
+  # This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  imagePullSecrets: []
+
+  # This is for setting Kubernetes Annotations to a Pod.
+  # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+  podAnnotations: {}
+  # This is for setting Kubernetes Labels to a Pod.
+  # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  podLabels: {}
+
+  podSecurityContext: {}
+  # fsGroup: 2000
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+  # runAsUser: 1000
+
+  # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+  service:
+    # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+    type: ClusterIP
+    # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
+    port: 80
+
+  # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
+  resources: {}
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the . This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+  #   memory: 128Mi
+
+  # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+
+  # This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+
+  # Additional volumes on the output Deployment definition.
+  volumes: []
+  # - name: foo
+  #   secret:
+  #     secretName: mysecret
+  #     optional: false
+
+  # Additional volumeMounts on the output Deployment definition.
+  volumeMounts: []
+  # - name: foo
+  #   mountPath: "/etc/foo"
+  #   readOnly: true
+
+dataprocessinglayer:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/dataprocessing-layer
+    pullPolicy: IfNotPresent
+    tag: "3c22f19a"
+  env:
+    - name: spring.datasource.dynamic.primary
+      value: master
+    - name: spring.datasource.dynamic.datasource.master.url
+      value: jdbc:mysql://mysql:3306/presentationlayer?useSSL=false
+    - name: spring.datasource.dynamic.datasource.master.username
+      value: root
+    - name: spring.datasource.dynamic.datasource.master.password
+      value: password
+    - name: spring.datasource.dynamic.datasource.slave.url
+      value: jdbc:clickhouse://clickhouse:8123?ssl=true
+    - name: spring.datasource.dynamic.datasource.slave.username
+      value: default
+    - name: spring.datasource.dynamic.datasource.slave.password
+      value: password
+    - name: spring.kafka.bootstrap-servers
+      value: 'kafka:9092'
+    - name: spring.kafka.consumer.group-id
+      value: journey_email_prod
+    - name: spring.kafka.consumer.topic
+      value: journey_email_metadata_prod
+    - name: spring.kafka.consumer.max-poll-records
+      value: '500'
+    - name: spring.kafka.unSubscribe.topic
+      value: subscribe_topic
+    - name: spring.kafka.unSubscribe.groupId
+      value: subscribe_group
+    - name: spring.kafka.consumer.user_profile.topic
+      value: test
+    - name: spring.kafka.partition-thread-num
+      value: '3'
+    - name: spring.kafka.isEnable
+      value: 'false'
+    - name: dataprocessinglayer.env
+      value: prod_
+    - name: spring.data.redis.host
+      value: redis-master
+    - name: spring.data.redis.port
+      value: '6379'
+    - name: spring.data.redis.timeout
+      value: '3000'
+    - name: spring.data.redis.lettuce.pool.max-idle
+      value: '10'
+    - name: spring.data.redis.lettuce.pool.min-idle
+      value: '3'
+    - name: spring.data.redis.lettuce.pool.max-active
+      value: '210'
+    - name: spring.data.redis.lettuce.pool.max-wait
+      value: '10000'
+    - name: spring.data.redis.ssl
+      value: 'false'
+    - name: spring.kafka.isAuthorization
+      value: 'false'
+    - name: confluent.enable
+      value: 'false'
+    - name: mybatis-plus.configuration.log-impl
+      value: org.apache.ibatis.logging.nologging.NoLoggingImpl
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
+
+aiagent:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/agent-server
+    pullPolicy: IfNotPresent
+    tag: "625307bd_20250604105927"
+  env:
+    - name: DATABASE_URL
+      value: mysql://root:password@mysql:3306/presentationlayer?useSSL=false
+    - name: FEEDMANAGER_BASEURL
+      value: 'http://rengage-feedmanager:8080'
+    - name: OPENAI_API_KEY
+      value: TO_BE_ADDED
+    - name: CLICKHOUSE_PROTOCOL
+      value: 'https:'
+    - name: CLICKHOUSE_HOST
+      value: clickhouse
+    - name: CLICKHOUSE_PORT
+      value: '8123'
+    - name: CLICKHOUSE_USERNAME
+      value: default
+    - name: CLICKHOUSE_PASSWORD
+      value: password
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
+
+xxljob:
+  replicaCount: 1
+  image:
+    repository: xuxueli/xxl-job-admin
+    pullPolicy: IfNotPresent
+    tag: "3.1.1"
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 8080
+  ingress:
+    enabled: false
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes:
+    - name: init-data
+      persistentVolumeClaim:
+        claimName: xxljob-init-pvc
+    - name: init-sql
+      configMap:
+        name: xxljob-init-sql
+
+cache:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/cache-service
+    pullPolicy: IfNotPresent
+    tag: "3ea4ec6a_20250422102227"
+  env:
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: TO_BE_ADDED
+    - name: OTEL_EXPORTER_OTLP_HEADERS_AUTHORIZATION
+      value: TO_BE_ADDED
+    - name: OTEL_EXPORTER_OTLP_DEPLOYMENT_ENVIRONMENT
+      value: prod
+    - name: CACHE_TTL_DAYS
+      value: '365'
+    - name: CACHE_PREFIX
+      value: prod_
+    - name: SPRING_DATA_REDIS_HOST
+      value: redis-master
+    - name: SPRING_DATA_REDIS_PASSWORD
+      value: ''
+    - name: SPRING_DATA_REDIS_PORT
+      value: '6379'
+    - name: SPRING_DATA_REDIS_TIMEOUT
+      value: '3000'
+    - name: SPRING_DATA_REDIS_LETTUCE_POLL_MAX_IDLE
+      value: '10'
+    - name: SPRING_DATA_REDIS_LETTUCE_POLL_MIN_IDLE
+      value: '3'
+    - name: SPRING_DATA_REDIS_LETTUCE_POLL_MAX_ACTIVE
+      value: '210'
+    - name: SPRING_DATA_REDIS_LETTUCE_POOL_MAX_WAIT
+      value: '10000'
+    - name: SPRING_DATA_REDIS_SSL
+      value: 'false'
+    - name: SERVER_TOMCAT_MAX_THREADS
+      value: '500'
+    - name: SERVER_TOMCAT_MIN_SPARE_THREADS
+      value: '50'
+    - name: SERVER_TOMCAT_ACCEPT_COUNT
+      value: '1000'
+    - name: SERVER_TOMCAT_MAX_CONNECTIONS
+      value: '2000'
+    - name: TENANT_USERID_COLUMN_TRENDSI
+      value: trendsi_user_id
+    - name: TENANT_USERID_COLUMN_DEFAULT
+      value: user_id
+    - name: CLICKHOUSE_URL
+      value: 'http://clickhouse:8123?user=default&password=password'
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 8080
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
+
+comment:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/comment-service
+    pullPolicy: IfNotPresent
+    tag: "2025-01-20-1"
+  env:
+    - name: DATABASE_PASSWORD
+      value: password
+    - name: DATABASE_URL
+      value: >-
+        jdbc:mysql://mysql:3306/blocfree_rengage?useSSL=false
+    - name: DATABASE_USERNAME
+      value: root
+    - name: RENGAGE_USER_URL
+      value: 'http://rengage-presentationlayer:8080'
+    - name: RENGAGE_COMMENT_URL
+      value: 'http://rengage-comment:8083/api/comment'
+    - name: RENGAGE_TEMPLATE_URL
+      value: 'http://rengage-template:8082/api/template'
+    - name: RENGAGE_BILL_URL
+      value: 'http://rengage-bill:8084/api/bill'
+    - name: sendGridApiKey
+      value: TO_BE_ADDED
+    - name: senderEmail
+      value: TO_BE_ADDED
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: /google-app-credential/service_account.json
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 8083
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes:
+    - name: comment-google-app-credential
+      secret:
+        secretName: google-app-credential
+        defaultMode: 420
+  volumeMounts:
+    - mountPath: /google-app-credential/service_account.json
+      name: comment-google-app-credential
+      subPath: service_account.json
+
+conductor:
+  replicaCount: 2
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/conductor-server
+    pullPolicy: IfNotPresent
+    tag: "bb07e1b7"
+  env:
+    - name: conductor.db.type
+      value: redis_standalone
+    - name: event.thread.pool.size
+      value: "150"
+    - name: conductor.redis.hosts
+      value: redis-master:6379:111
+    - name: conductor.redis.isSSL
+      value: "false"
+    - name: conductor.redis.isQueueRedisSSL
+      value: "true"
+    - name: conductor.redis.tls
+      value: "false"
+    - name: journey-insight.db.type
+      value: kafka
+    - name: journey-insight.kafka.bootstrapServers
+      value: kafka:9092
+    - name: journey-insight.kafka.topic
+      value: user-journey-log-prod
+    - name: conductor.event-queues.sqs.batchSize
+      value: "10"
+    - name: conductor.event-queues.sqs.pollTimeDuration
+      value: 5ms
+    - name: conductor.redis.workflowNamespacePrefix
+      value: conductor
+    - name: conductor.redis.queueNamespacePrefix
+      value: conductor_queues
+    - name: queues.dynomite.threads
+      value: "10"
+    - name: conductor.app.workflowRepairServiceEnabled
+      value: "false"
+    - name: conductor.redis.queuesNonQuorumPort
+      value: "22122"
+    - name: conductor.indexing.enabled
+      value: "true"
+    - name: conductor.elasticsearch.url
+      value: http://elastic-master
+    - name: conductor.elasticsearch.username
+      value: elastic
+    - name: conductor.elasticsearch.password
+      value: zNxihzqNg2mgfU4RwhkkoyVR
+    - name: conductor.elasticsearch.indexReplicasCount
+      value: "0"
+    - name: conductor.elasticsearch.indexPrefix
+      value: conductor-prod-es8
+    - name: conductor.elasticsearch.version
+      value: "8"
+    - name: conductor.app.ttlRedisKeyExpire
+      value: 3600s
+    - name: conductor.app.enableRemoveRedisKey
+      value: "true"
+    - name: conductor.app.workflowCleanupIds
+      value: ephemeralKitchenSinkStoredTasks,kitchensink,Send_Test_Email_Workflow_C97E589F39164D94BF54D241FBDDFC9B
+    - name: loadSample
+      value: "false"
+    - name: conductor.elasticsearch.clusterHealthColor
+      value: yellow
+    - name: conductor.default-event-queue.type
+      value: sqs
+    - name: conductor.event-queues.sqs.enabled
+      value: "true"
+    - name: conductor.event-queues.sqs.authorized-accounts
+      value: "593045915463"
+    - name: conductor.event-queues.sqs.listenerQueuePrefix
+      value: conductor_sqs_prod_
+    - name: conductor.metrics-prometheus.enabled
+      value: "true"
+    - name: management.endpoints.web.exposure.include
+      value: prometheus
+    - name: conductor.workflow-status-listener.type
+      value: archive
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 8080
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
+
+conductorconsumer:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/conductor-consumer-service
+    pullPolicy: IfNotPresent
+    tag: "b273c13"
+  env:
+    - name: DATABASE_URL
+      value: jdbc:clickhouse://clickhouse:8123?compress=0&ssl=false
+    - name: DATABASE_USERNAME
+      value: default
+    - name: DATABASE_PASSWORD
+      value: password
+    - name: KAFKA_SERVER
+      value: 'kafka:9092'
+    - name: spring.kafka.isAuthorization
+      value: 'false'
+    - name: confluent.username
+      value: user1
+    - name: confluent.password
+      value: password
+    - name: KAFKA_CONSUMER_NUM
+      value: '6'
+    - name: spring.kafka.consumer.max-poll-records
+      value: '1000'
+    - name: KAFKA_TOPIC
+      value: user-journey-log-prod
+    - name: KAFKA_GROUP
+      value: user-journey-log-prod
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
+
+conductorui:
+  replicaCount: 1
+  image:
+    repository: nginx
+    pullPolicy: IfNotPresent
+    tag: ""
+  env: []
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
+
+consumer:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/consumer-service
+    pullPolicy: IfNotPresent
+    tag: "e38360e"
+  env:
+    - name: spring.datasource.dynamic.primary
+      value: master
+    - name: spring.datasource.dynamic.datasource.master.url
+      value: 'jdbc:mysql://mysql:3306/presentationlayer?useSSL=false'
+    - name: spring.datasource.dynamic.datasource.master.username
+      value: root
+    - name: spring.datasource.dynamic.datasource.master.password
+      value: password
+    - name: spring.datasource.dynamic.datasource.slave.url
+      value: 'jdbc:clickhouse://clickhouse:8123?compress=0&ssl=false'
+    - name: spring.datasource.dynamic.datasource.slave.username
+      value: default
+    - name: spring.datasource.dynamic.datasource.slave.password
+      value: password
+    - name: spring.kafka.bootstrap-servers
+      value: 'kafka:9092'
+    - name: spring.kafka.consumer.group-id
+      value: journey_webhook_prod
+    - name: spring.kafka.consumer.topic
+      value: email_webhook_prod
+    - name: spring.kafka.consumer.max-poll-records
+      value: '500'
+    - name: dataprocessinglayer.env
+      value: prod
+    - name: spring.datasource.dynamic.datasource.trendsi.url
+      value: 'jdbc:clickhouse://clickhouse:8123/trendsi?compress=0&ssl=false'
+    - name: spring.datasource.dynamic.datasource.trendsi.username
+      value: default
+    - name: spring.datasource.dynamic.datasource.trendsi.password
+      value: password
+    - name: trendsi.kafka.is-open
+      value: 'true'
+    - name: trendsi.kafka.bootstrap-servers
+      value: 'kafka:9092'
+    - name: trendsi.kafka.consumer.topic1
+      value: Trendsi_user_profile
+    - name: trendsi.kafka.consumer.topic2
+      value: Trendsi_user_event
+    - name: trendsi.kafka.consumer.group-id
+      value: trendsi_1
+    - name: confluent.username
+      value: user1
+    - name: confluent.password
+      value: password
+    - name: spring.data.redis.host
+      value: redis-master
+    - name: spring.data.redis.port
+      value: '6379'
+    - name: spring.data.redis.timeout
+      value: '3000'
+    - name: spring.data.redis.lettuce.pool.max-idle
+      value: '10'
+    - name: spring.data.redis.lettuce.pool.min-idle
+      value: '3'
+    - name: spring.data.redis.lettuce.pool.max-active
+      value: '210'
+    - name: spring.data.redis.lettuce.pool.max-wait
+      value: '10000'
+    - name: spring.data.redis.ssl
+      value: 'false'
+    - name: spring.kafka.isAuthorization
+      value: 'true'
+    - name: confluent.enable
+      value: 'true'
+    - name: spring.kafka.unSubscribe.topic
+      value: subscribe_topic
+    - name: spring.kafka.unSubscribe.groupId
+      value: subscribe_group
+    - name: spring.kafka.consumer.user_profile.topic
+      value: test
+    - name: spring.kafka.partition-thread-num
+      value: '3'
+    - name: spring.kafka.isEnable
+      value: 'true'
+    - name: spring.kafka.consumer.push.topic
+      value: push_webhook_prod
+    - name: spring.kafka.consumer.sms.topic
+      value: sms_webhook_prod
+    - name: spring.kafka.consumer.inapp.topic
+      value: inapp_webhook_prod
+    - name: spring.kafka.consumer.user-event.num
+      value: '0'
+    - name: spring.kafka.consumer.user-profile.num
+      value: '0'
+    - name: env
+      value: prod
+    - name: spring.kafka.enable
+      value: 'false'
+    - name: spring.kafka.consumer.retry.topic
+      value: metadata_retry_queue_prod
+    - name: conductor_server_api_url
+      value: 'http://rengage-conductor:8080/api/queue'
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
+
+dataretention:
+  replicaCount: 1
+  image:
+    repository: nginx
+    pullPolicy: IfNotPresent
+    tag: ""
+  env: []
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
+
+feedmanager:
+  replicaCount: 2
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/feedmanager
+    pullPolicy: IfNotPresent
+    tag: "202507111620"
+  env:
+    - name: DATABASE_DEFAULT_LINK
+      value: 'jdbc:mysql://mysql:3306/presentationlayer?useSSL=false'
+    - name: DATABASE_CLICKHOUSE_LINK
+      value: 'jdbc:clickhouse://clickhouse:8123?compress=0&ssl=false'
+    - name: DATABASE_DEFAULT_EXTRA
+      value: ''
+    - name: DATABASE_CLICKHOUSE_EXTRA
+      value: ''
+    - name: REDIS_URL
+      value: 'redis-master:6379'
+    - name: REDIS_PASSWORD
+      value: ''
+    - name: REDIS_TLS
+      value: 'false'
+    - name: REDIS_DB
+      value: '0'
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 8080
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations: {}
+    hosts:
+      - host: feedmanager.rengage.net
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
+
+frontend:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/react-demo
+    pullPolicy: IfNotPresent
+    tag: "5c5c4ac9"
+  env: []
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations: {}
+    hosts:
+      - host: demo.rengage.net
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes:
+    - name: frontend-google-app-credential
+      secret:
+        secretName: google-app-credential
+        defaultMode: 420
+  volumeMounts:
+    - mountPath: /usr/share/nginx/html/config/service_account.json
+      name: frontend-google-app-credential
+      subPath: service_account.json
+
+blocfree:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/frontend-blocfree
+    pullPolicy: IfNotPresent
+    tag: "314a431c_20250417042158"
+  env:
+    - name: RENGAGE_PRESENTATION_LAYER_URL
+      value: 'http://rengage-presentationlayer:8080'
+    - name: DATABASE_URL
+      value: 'mysql://root:password@mysql:3306/blocfree?sslaccept=strict'
+    - name: RENGAGE_TEMPLATE_URL
+      value: 'http://rengage-template:8082/api/template'
+    - name: WEB_FETCH_URL
+      value: 'http://web-fetch:3000'
+    - name: NEXT_PUBLIC_POSTHOG_API_KEY
+      value: 'TO_BE_ADDED'
+    - name: OPENAI_API_KEY
+      value: >-
+        'TO_BE_ADDED'
+    - name: GEMINI_API_KEY
+      value: 'TO_BE_ADDED'
+    - name: ANTHROPIC_API_KEY
+      value: >-
+        'TO_BE_ADDED'
+    - name: DEEPSEEK_API_KEY
+      value: 'TO_BE_ADDED'
+    - name: NEXT_PUBLIC_FIREBASE
+      value: |-
+        TO_BE_ADDED
+    - name: FIREBASE_JSON
+      value: 'TO_BE_ADDED'
+    - name: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+      value: 161367630061-fpiv9qemmn7o9jktcgleo67gf7kvreva.apps.googleusercontent.com
+    - name: NEXT_PUBLIC_INGEST_API_HOST
+      value: 'TO_BE_ADDED'
+    - name: NEXT_PUBLIC_INGEST_TENANT
+      value: Blocfree
+    - name: NEXT_PUBLIC_INGEST_TOKEN
+      value: tT0QgSu5adlFRD39XI5km98FMklsYno7jyQ85nZbNsweMjVI6XdP5yNHCoXZkxU8EWTDfORwxrpfgf45RKjT7Yx0SENuGgxEDFYZ
+    - name: API_URL
+      value: /
+    - name: NEXT_PUBLIC_POSTHOG_API_KEY
+      value: phc_c4FJnbi951zjJJnhHkz7DRkpDQl54xTLEo2UULvo6Sa
+    - name: STRIPE_PK
+      value: pk_live_51POAkZP1HbwY21WbnllOYhYfdHCzK1WHUMgHfB56K2W8MYjt0zVrTIaUZCw68wr2nxuT8Gsv8lJkYKlTIPKnpsFg000zdKUJ01
+    - name: ASSISTANT_ID
+      value: asst_Qr3aLgIF1dff6fhpD5VPUtp4
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: "nginx"
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes:
+    - name: bf-google-app-credential
+      secret:
+        secretName: google-app-credential
+        defaultMode: 420
+  volumeMounts:
+    - mountPath: /usr/share/nginx/html/config/service_account.json
+      name: bf-google-app-credential
+      subPath: service_account.json
+
+ingest:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/openresty
+    pullPolicy: IfNotPresent
+    tag: "20250721_1643"
+  env:
+    - name: REDIS_HOST
+      value: redis-master
+    - name: REDIS_SSL
+      value: 'false'
+    - name: KAFKA_BROKERS
+      value: 'kafka:9092'
+    - name: ENV
+      value: 'preprod'
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
+
+ingestwebhook:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/openresty-webhook
+    pullPolicy: IfNotPresent
+    tag: "4de8d650_20250313061221"
+  env:
+    - name: REDIS_HOST
+      value: redis-master
+    - name: REDIS_SSL
+      value: 'false'
+    - name: KAFKA_BROKERS
+      value: 'kafka:9092'
+    - name: ENV
+      value: 'preprod'
+    - name: email_webhook_topic
+      value: email_webhook_prod
+    - name: sms_webhook_topic
+      value: sms_webhook_prod
+    - name: push_webhook_topic
+      value: push_webhook_prod
+    - name: inapp_webhook_topic
+      value: inapp_webhook_prod
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
+
+usertagworker:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/conductor-workers
+    pullPolicy: IfNotPresent
+    tag: "468abb8c"
+  env:
+    - name: worker.taskDefName
+      value: Tag-Base-Rengage
+    - name: worker.service.type
+      value: tag
+    - name: userTag.type
+      value: clickhouse
+    - name: worker.threadCount
+      value: '5'
+    - name: worker.pollIntervalInMilliseconds
+      value: '100'
+    - name: worker.serverURI
+      value: 'http://rengage-conductor:8080/api/'
+    - name: clickhouse.jdbcUrl
+      value: 'jdbc:clickhouse://clickhouse:8123?compress=0&ssl=false'
+    - name: clickhouse.username
+      value: default
+    - name: clickhouse.password
+      value: password
+    - name: clickhouse.userProfileIdColumn
+      value: user_id
+    - name: clickhouse.tenant
+      value: rengage
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+
+emailworker:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/conductor-workers
+    pullPolicy: IfNotPresent
+    tag: "468abb8c"
+  env:
+    - name: worker.taskDefName
+      value: Email-Sendgrid-Rengage-v2
+    - name: worker.service.type
+      value: email
+    - name: worker.service.provider.type
+      value: sendgrid
+    - name: worker.service.email.sendGridApiKey
+      value: >-
+        TO_BE_ADDED
+    - name: worker.service.rendering.contentHubBackendURL
+      value: 'http://rengage-presentationlayer:8080/graphql'
+    - name: worker.service.rendering.contentHubBackendInternalToken
+      value: 'Bearer KnrtohXq9Lz6kIBdT6FNbNEYOJMBARJ7-sMAkFwIAU974w5EIRFc0JmU2ac0DulKM-VJuk4q4r54D3MyqBHRyozcMf8cjmJIGD'
+    - name: worker.service.rendering.contentHubBackendTenantDomain
+      value: renuity
+    - name: worker.service.rendering.cacheUrl
+      value: 'http://rengage-cache:8080/api/cache/get'
+    - name: worker.serverURI
+      value: 'http://rengage-conductor:8080/api/'
+    - name: clickhouse.server.url
+      value: 'http://clickhouse:8123?user=default&password=password'
+    - name: spring.kafka.bootstrap-servers
+      value: 'kafka:9092'
+    - name: spring.kafka.consumer.max-poll-records
+      value: '100'
+    - name: cache.refresh.topic
+      value: template_cache_prod
+    - name: bootstrap.mode
+      value: conductor
+    - name: worker.service.email.sendgrid.unSubscribeGroupId
+      value: '27469'
+    - name: worker.service.email.sendgrid.dataProcessingServerUrl
+      value: 'https://rengage-ingestwebhook:8080/api/v1/email/webhook'
+    - name: insights.env
+      value: prod
+    - name: worker.suppressedUJsUuid
+      value: 52887633-e2d0-4963-a952-0ea376a91a95
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+
+pushworker:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/conductor-workers
+    pullPolicy: IfNotPresent
+    tag: "468abb8c"
+  env:
+    - name: worker.taskDefName
+      value: Push-Firebase-Rengage
+    - name: worker.service.type
+      value: push
+    - name: worker.service.provider.type
+      value: fcm
+    - name: worker.threadCount
+      value: '5'
+    - name: worker.pollIntervalInMilliseconds
+      value: '100'
+    - name: worker.serverURI
+      value: 'http://rengage-conductor:8080/api/'
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: /app/secret/serviceAccountKey.json
+    - name: push.dataProcessingServerUrl
+      value: 'http://ingest-webhook.rengage.net/api/v1/push/webhook'
+    - name: push.env
+      value: prod
+    - name: apns.env
+      value: prod
+    - name: spring.data.redis.ssl
+      value: 'false'
+    - name: spring.data.redis.host
+      value: redis-master
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes:
+    - name: pw-google-app-credential
+      secret:
+        secretName: google-app-credential
+        defaultMode: 420
+  volumeMounts:
+    - mountPath: /app/secret/serviceAccountKey.json
+      name: pw-google-app-credential
+      subPath: service_account.json
+
+managedexperimentworker:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/conductor-workers
+    pullPolicy: IfNotPresent
+    tag: "468abb8c"
+  env:
+    - name: worker.taskDefName
+      value: Experiment-Managed-Rengage
+    - name: worker.service.type
+      value: experiment
+    - name: experiment.type
+      value: managed
+    - name: worker.threadCount
+      value: '5'
+    - name: worker.pollIntervalInMilliseconds
+      value: '100'
+    - name: worker.serverURI
+      value: 'http://rengage-conductor:8080/api/'
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+
+renderingworker:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/conductor-workers
+    pullPolicy: IfNotPresent
+    tag: "468abb8c"
+  env:
+    - name: worker.taskDefName
+      value: Rendering-Base-Rengage
+    - name: worker.service.type
+      value: rendering
+    - name: worker.service.provider.type
+      value: base
+    - name: worker.threadCount
+      value: '5'
+    - name: worker.pollIntervalInMilliseconds
+      value: '100'
+    - name: worker.serverURI
+      value: 'http://rengage-conductor:8080/api/'
+    - name: worker.service.rendering.contentHubBackendURL
+      value: 'http://rengage-presentationlayer:8080/graphql'
+    - name: worker.service.rendering.mjmlBackendURL
+      value: 'http://mjml-server'
+    - name: worker.service.rendering.contentHubBackendInternalToken
+      value: 'Bearer KnrtohXq9Lz6kIBdT6FNbNEYOJMBARJ7-sMAkFwIAU974w5EIRFc0JmU2ac0DulKM-VJuk4q4r54D3MyqBHRyozcMf8cjmJIGD'
+    - name: worker.service.rendering.contentHubBackendTenantDomain
+      value: renuity
+    - name: worker.service.rendering.cacheUrl
+      value: 'http://rengage-cache:8080/api/cache/get'
+    - name: spring.kafka.bootstrap-servers
+      value: 'kafka:9092'
+    - name: spring.kafka.consumer.max-poll-records
+      value: '100'
+    - name: cache.refresh.topic
+      value: template_cache_prod
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+
+smartemailworker:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/conductor-workers
+    pullPolicy: IfNotPresent
+    tag: "468abb8c"
+  env:
+    - name: spring.kafka.bootstrap-servers
+      value: 'kafka:9092'
+    - name: worker.taskDefName
+      value: Smart-Email-Rengage
+    - name: worker.service.type
+      value: smartEmail
+    - name: worker.service.provider.type
+      value: smartEmail
+    - name: worker.threadCount
+      value: '10'
+    - name: worker.pollIntervalInMilliseconds
+      value: '100'
+    - name: worker.serverURI
+      value: 'http://rengage-conductor:8080/api/'
+    - name: spring.data.redis.ssl
+      value: 'false'
+    - name: spring.data.redis.host
+      value: redis-master
+    - name: spring.data.redis.port
+      value: '6379'
+    - name: spring.data.redis.timeout
+      value: '3000'
+    - name: spring.data.redis.lettuce.pool.max-idle
+      value: '10'
+    - name: spring.data.redis.lettuce.pool.min-idle
+      value: '3'
+    - name: spring.data.redis.lettuce.pool.max-active
+      value: '210'
+    - name: spring.data.redis.lettuce.pool.max-wait
+      value: '10000'
+    - name: clickhouse.jdbcUrl
+      value: 'jdbc:clickhouse://clickhouse:8123?compress=0&ssl=false'
+    - name: clickhouse.username
+      value: default
+    - name: clickhouse.password
+      value: password
+    - name: clickhouse.tenant
+      value: rengage
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+
+smartpushworker:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/conductor-workers
+    pullPolicy: IfNotPresent
+    tag: "468abb8c"
+  env:
+    - name: spring.kafka.bootstrap-servers
+      value: 'kafka:9092'
+    - name: worker.taskDefName
+      value: Smart-Push-Rengage
+    - name: worker.service.type
+      value: smartPush
+    - name: worker.service.provider.type
+      value: aiPush
+    - name: worker.threadCount
+      value: '10'
+    - name: worker.pollIntervalInMilliseconds
+      value: '100'
+    - name: worker.serverURI
+      value: 'http://rengage-conductor:8080/api/'
+    - name: spring.data.redis.ssl
+      value: 'false'
+    - name: spring.data.redis.host
+      value: redis-master
+    - name: spring.data.redis.port
+      value: '6379'
+    - name: spring.data.redis.timeout
+      value: '3000'
+    - name: spring.data.redis.lettuce.pool.max-idle
+      value: '10'
+    - name: spring.data.redis.lettuce.pool.min-idle
+      value: '3'
+    - name: spring.data.redis.lettuce.pool.max-active
+      value: '210'
+    - name: spring.data.redis.lettuce.pool.max-wait
+      value: '10000'
+    - name: clickhouse.jdbcUrl
+      value: 'jdbc:clickhouse://clickhouse:8123?compress=0&ssl=false'
+    - name: clickhouse.username
+      value: default
+    - name: clickhouse.password
+      value: password
+    - name: clickhouse.tenant
+      value: rengage
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+
+smsworker:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/conductor-workers
+    pullPolicy: IfNotPresent
+    tag: "468abb8c"
+  env:
+    - name: worker.taskDefName
+      value: Sms-Twilio-Rengage
+    - name: worker.service.type
+      value: sms
+    - name: worker.service.provider.type
+      value: twilioSMS
+    - name: worker.threadCount
+      value: '5'
+    - name: worker.pollIntervalInMilliseconds
+      value: '100'
+    - name: worker.serverURI
+      value: 'http://rengage-conductor:8080/api/'
+    - name: TWILIO_ACCOUNT_SID
+      value: 'TO_BE_ADDED'
+    - name: TWILIO_AUTH_TOKEN
+      value: 'TO_BE_ADDED'
+    - name: twilio.senderPhoneNumber
+      value: '+18777096391'
+    - name: twilio.endpoints.statusCallbackUrl
+      value: 'http://ingest-webhook.rengage.net/api/v1/sms/webhook'
+    - name: spring.data.redis.ssl
+      value: 'false'
+    - name: spring.data.redis.host
+      value: redis-master
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+
+statsigworker:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/conductor-workers
+    pullPolicy: IfNotPresent
+    tag: "468abb8c"
+  env:
+    - name: worker.taskDefName
+      value: Experiment-StatSig-Rengage
+    - name: worker.service.type
+      value: experiment
+    - name: experiment.type
+      value: statsig
+    - name: worker.threadCount
+      value: '5'
+    - name: worker.pollIntervalInMilliseconds
+      value: '100'
+    - name: worker.serverURI
+      value: 'http://rengage-conductor:8080/api/'
+    - name: statsig.serverApiKey
+      value: TO_BE_ADDED
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+
+presentationlayer:
+  replicaCount: 2
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/presentation-layer
+    pullPolicy: IfNotPresent
+    tag: "8ea318a7"
+  env:
+    - name: STORAGE_PROVIDER
+      value: "minio"
+    - name: MINIO_ENDPOINT
+      value: "http://minio:9000"
+    - name: MINIO_ACCESSKEY
+      value: "minioadmin"
+    - name: MINIO_SECRETKEY
+      value: "minioadmin"
+    - name: MINIO_BUCKET
+      value: "test"
+    - name: CLICKHOUSE_ENV
+      value: 'preprod'
+    - name: CACHE_SERVICE_URL
+      value: 'http://rengage-cache:8080/api'
+    - name: XXL_JOB_EXECUTOR_PORT
+      value: '9999'
+    - name: XXL_JOB_ADMIN_ADDRESSES
+      value: >-
+        http://rengage-xxl-job-admin:8080/xxl-job-admin
+    - name: XXL_JOB_EXECUTOR_APPNAME
+      value: presentation-layer-executor
+    - name: XXL_JOB_ACCESS_TOKEN
+      value: default_token
+    - name: DATABASE_URL
+      value: 'jdbc:mysql://mysql:3306/presentationlayer?useSSL=false'
+    - name: DATABASE_USERNAME
+      value: root
+    - name: DATABASE_PASSWORD
+      value: password
+    - name: SPRING_CACHE_TYPE
+      value: simple
+    - name: SPRING_DATA_REDIS_HOST
+      value: redis-master
+    - name: SPRING_DATA_REDIS_PORT
+      value: '6379'
+    - name: SPRING_DATA_REDIS_SSL
+      value: 'false'
+    - name: awsEventBridge.lambdaArnSuffix
+      value: prod
+    - name: bulkJobManager.type
+      value: eventBridgeLambda
+    - name: confluent.password
+      value: TO_BE_ADDED
+    - name: confluent.username
+      value: TO_BE_ADDED
+    - name: spring.kafka.bootstrap-servers
+      value: 'kafka:9092'
+    - name: spring.kafka.isConfluent
+      value: 'true'
+    - name: AGENT_API_URL
+      value: 'http://rengage-aiagent:3000/api/agent/run'
+    - name: AWSEVENTBRIDGE_LAMBDAARNSUFFIX
+      value: prod
+    - name: CONDUCTOR_SERVERURL
+      value: 'http://rengage-conductor:8080/api/'
+    - name: CONDUCTOR_SERVER_API_USER_NAME
+      value: rengage
+    - name: CONDUCTOR_SERVER_API_PASSWORD
+      value: password
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: /google-app-credential/service_account.json
+    - name: CLICKHOUSE_JDBCURL
+      value: 'jdbc:clickhouse://clickhouse:8123?compress=0&ssl=false'
+    - name: CLICKHOUSE_USERNAME
+      value: default
+    - name: CLICKHOUSE_PASSWORD
+      value: password
+    - name: service.email.sendGridApiKey
+      value: >-
+        TO_BE_ADDED
+    - name: sendGridApiKey
+      value: >-
+        TO_BE_ADDED
+    - name: senderEmail
+      value: admin@rengage.co
+    - name: RENGAGE_TEMPLATE_URL
+      value: 'http://rengage-template:8082/api/template'
+    - name: RENGAGE_COMMENT_URL
+      value: 'http://rengage-comment:8083/api/comment'
+    - name: INGEST_API_URL
+      value: 'http://rengage-ingest:80/api/v1'
+    - name: GPT_API_KEY
+      value: >-
+        TO_BE_ADDED
+    - name: JAVA_OPTS
+      value: >-
+        -Dcom.sun.management.jmxremote
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+        -Dcom.sun.management.jmxremote.local.only=false
+        -Dcom.sun.management.jmxremote.port=9010
+        -Dcom.sun.management.jmxremote.rmi.port=9010
+        -Djava.rmi.server.hostname=127.0.0.1 -Xmx4g
+        -XX:+ExplicitGCInvokesConcurrent
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 8080
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes:
+    - name: pl-google-app-credential
+      secret:
+        secretName: google-app-credential
+        defaultMode: 420
+  volumeMounts:
+    - mountPath: /google-app-credential/service_account.json
+      name: pl-google-app-credential
+      subPath: service_account.json
+
+template:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/template-service
+    pullPolicy: IfNotPresent
+    tag: "2025-07-21"
+  env:
+    - name: DATABASE_PASSWORD
+      value: 'password'
+    - name: DATABASE_URL
+      value: >-
+        jdbc:mysql://mysql:3306/blocfree_rengage?useSSL=false
+    - name: DATABASE_USERNAME
+      value: root
+    - name: RENGAGE_USER_URL
+      value: 'http://rengage-presentationlayer:8080'
+    - name: RENGAGE_COMMENT_URL
+      value: 'http://rengage-comment:8083/api/comment'
+    - name: RENGAGE_TEMPLATE_URL
+      value: 'http://rengage-template:8082/api/comment'
+    - name: RENGAGE_BILL_URL
+      value: 'http://rengage-bill:8084/api/bill'
+    - name: HUBSPOT_CLIENTID
+      value: TO_BE_ADDED
+    - name: HUBSPOT_CLIENTSECRET
+      value: TO_BE_ADDED
+    - name: sendGridApiKey
+      value: >-
+        TO_BE_ADDED
+    - name: senderEmail
+      value: TO_BE_ADDED
+    - name: GOOGLE_CLIENTID
+      value: >-
+        TO_BE_ADDED
+    - name: GOOGLE_CLIENTSECRET
+      value: TO_BE_ADDED
+    - name: MILVUS_COLLECTION_NAME
+      value: blocfree_prod_email_mjml
+    - name: MILVUS_HOST
+      value: TO_BE_ADDED
+    - name: MILVUS_PORT
+      value: '19530'
+    - name: MILVUS_USERNAME
+      value: root
+    - name: MILVUS_PASSWORD
+      value: Milvus
+    - name: CACHE_REFRESH_TOPIC
+      value: template_cache_prod
+    - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+      value: 'kafka:9092'
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: /google-app-credential/service_account.json
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 8082
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes:
+    - name: template-google-app-credential
+      secret:
+        secretName: google-app-credential
+        defaultMode: 420
+  volumeMounts:
+    - mountPath: /google-app-credential/service_account.json
+      name: template-google-app-credential
+      subPath: service_account.json
+
+userconsumer:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/rengage/rengage-ce/user-consumer-service
+    pullPolicy: IfNotPresent
+    tag: "c0e51be"
+  env:
+    - name: user.cache.url
+      value: 'http://rengage-cache:8080/api/cache'
+    - name: spring.kafka.consumer.user-profile.num
+      value: '2'
+    - name: spring.kafka.consumer.user-event.num
+      value: '6'
+    - name: management.endpoints.web.exposure.include
+      value: 'prometheus,health'
+    - name: spring.datasource.dynamic.primary
+      value: master
+    - name: spring.datasource.dynamic.datasource.master.url
+      value: 'jdbc:mysql://mysql:3306/presentationlayer?useSSL=false'
+    - name: spring.datasource.dynamic.datasource.master.username
+      value: root
+    - name: spring.datasource.dynamic.datasource.master.password
+      value: password
+    - name: spring.datasource.dynamic.datasource.slave.url
+      value: 'jdbc:clickhouse://clickhouse:8123?compress=0&ssl=false'
+    - name: spring.datasource.dynamic.datasource.slave.username
+      value: default
+    - name: spring.datasource.dynamic.datasource.slave.password
+      value: password
+    - name: spring.kafka.bootstrap-servers
+      value: 'kafka:9092'
+    - name: spring.kafka.consumer.max-poll-records
+      value: '1000'
+    - name: confluent.username
+      value: user1
+    - name: confluent.password
+      value: password
+    - name: spring.data.redis.host
+      value: redis
+    - name: spring.data.redis.port
+      value: '6379'
+    - name: spring.data.redis.timeout
+      value: '3000'
+    - name: spring.data.redis.lettuce.pool.max-idle
+      value: '10'
+    - name: spring.data.redis.lettuce.pool.min-idle
+      value: '3'
+    - name: spring.data.redis.lettuce.pool.max-active
+      value: '210'
+    - name: spring.data.redis.lettuce.pool.max-wait
+      value: '10000'
+    - name: spring.kafka.user.tenant-name
+      value: 'recroom_dev,rengage,Solvely,recroom,blocfree,trendsi'
+    - name: spring.data.redis.ssl
+      value: 'false'
+    - name: spring.kafka.isAuthorization
+      value: 'true'
+    - name: confluent.enable
+      value: 'true'
+    - name: spring.kafka.isEnable
+      value: 'true'
+    - name: conductor.trigger.events
+      value: >-
+        played_banned,session_start,Orientation_finished,account_finished,markerpen_session_v2,room_stats,IAP_success,game_session_completed
+    - name: spring.kafka.consumer.push.topic
+      value: push_webhook_prod
+    - name: spring.kafka.consumer.push.retry-topic
+      value: metadata_retry_queue_prod
+    - name: spring.kafka.consumer.push.group-id
+      value: push_webhook_prod_id
+    - name: spring.kafka.consumer.push.num
+      value: '6'
+    - name: spring.kafka.consumer.push_statistic.tenant
+      value: 'trendsi,recroom'
+    - name: debug_to_enforce_restart
+      value: '1'
+    - name: otel.exporter.otlp.endpoint
+      value: >-
+        https://6e3256b8aa56412dba45b16b4c85efb4.apm.us-west-2.aws.cloud.es.io:443
+    - name: otel.exporter.otlp.headers.authorization
+      value: Bearer yfOpxQEvLYmi4EZftW
+    - name: otel.exporter.otlp.deployment.environment
+      value: prod
+    - name: spring.kafka.consumer.capitalLetterSupported
+      value: 'false'
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+  resources: {}
+  livenessProbe: {}
+  readinessProbe: {}
+  autoscaling:
+    enabled: false
+  volumes: []
+  volumeMounts: []
